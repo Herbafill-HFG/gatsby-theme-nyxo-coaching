@@ -13,20 +13,14 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           submodules: recursive
 
-      - uses: actions/checkout@v2
-      - name: Decrypt team setting
-        run: ./.github/scripts/decrypt-team-provider.sh
+      - run: ./.github/scripts/decrypt-team-provider.sh
         env:
           PASS_PHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: "10.x"
 
       - name: Configure amplify
         uses: ambientlight/amplify-cli-action@0.2.1
         with:
+          project_dir: ./site
           amplify_command: configure
           amplify_env: production
         env:
@@ -34,12 +28,31 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-central-1
 
-      - run: yarn install --frozen-lockfile --non-interactive
-      - run: yarn build
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "12.x"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@hello-nyxo"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: site
+        run: |
+          yarn install --frozen-lockfile --non-interactive
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        working-directory: site
+        run: |
+          yarn build
         env:
           GATSBY_TELEMETRY_DISABLED: 1
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: netlify/actions/cli@master
         env:
